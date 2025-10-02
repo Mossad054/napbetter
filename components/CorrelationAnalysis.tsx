@@ -1,0 +1,351 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
+import type { Href } from 'expo-router';
+import { 
+  BarChart3, 
+  Award, 
+  Moon,
+  TrendingUp,
+  TrendingDown,
+  Target,
+  Brain
+} from 'lucide-react-native';
+import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY } from '@/constants/theme';
+
+interface Correlation {
+  id: string;
+  activity: string;
+  moodImpact: number;
+  sleepImpact: number;
+  clarityImpact: number;
+  frequency: number;
+}
+
+interface Recommendation {
+  id: string;
+  title: string;
+  description: string;
+  category: 'mood' | 'sleep' | 'clarity';
+}
+
+interface CorrelationAnalysisProps {
+  correlations: Correlation[];
+  recommendations: Recommendation[];
+  onSleepHelpPress?: () => void; // Add this prop
+}
+
+export default function CorrelationAnalysis({ correlations, recommendations, onSleepHelpPress }: CorrelationAnalysisProps) {
+  const router = useRouter();
+  const [expandedCorrelation, setExpandedCorrelation] = useState<string | null>(null);
+
+  const toggleCorrelation = (id: string) => {
+    setExpandedCorrelation(expandedCorrelation === id ? null : id);
+  };
+
+  const getImpactIcon = (value: number) => {
+    return value > 0 ? 
+      <TrendingUp color={COLORS.success} size={16} /> : 
+      <TrendingDown color={COLORS.error} size={16} />;
+  };
+
+  const getImpactColor = (value: number) => {
+    return value > 0 ? COLORS.success : COLORS.error;
+  };
+
+  const renderCorrelationCard = (correlation: Correlation) => {
+    const isExpanded = expandedCorrelation === correlation.id;
+    
+    return (
+      <View key={correlation.id} style={styles.correlationCard}>
+        <TouchableOpacity 
+          style={styles.correlationHeader}
+          onPress={() => toggleCorrelation(correlation.id)}
+        >
+          <BarChart3 color={COLORS.primary} size={20} />
+          <Text style={styles.correlationTitle}>{correlation.activity}</Text>
+          <Text style={styles.correlationFrequency}>{correlation.frequency}x</Text>
+        </TouchableOpacity>
+        
+        {isExpanded && (
+          <View style={styles.correlationImpacts}>
+            <View style={styles.impactItem}>
+              <Text style={styles.impactLabel}>Mood</Text>
+              {getImpactIcon(correlation.moodImpact)}
+              <Text style={[styles.impactValue, { color: getImpactColor(correlation.moodImpact) }]}>
+                {correlation.moodImpact > 0 ? '+' : ''}{correlation.moodImpact.toFixed(1)}
+              </Text>
+            </View>
+            
+            <View style={styles.impactItem}>
+              <Text style={styles.impactLabel}>Sleep</Text>
+              {getImpactIcon(correlation.sleepImpact)}
+              <Text style={[styles.impactValue, { color: getImpactColor(correlation.sleepImpact) }]}>
+                {correlation.sleepImpact > 0 ? '+' : ''}{correlation.sleepImpact.toFixed(1)}
+              </Text>
+            </View>
+            
+            <View style={styles.impactItem}>
+              <Text style={styles.impactLabel}>Clarity</Text>
+              {getImpactIcon(correlation.clarityImpact)}
+              <Text style={[styles.impactValue, { color: getImpactColor(correlation.clarityImpact) }]}>
+                {correlation.clarityImpact > 0 ? '+' : ''}{correlation.clarityImpact.toFixed(1)}
+              </Text>
+            </View>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  const renderRecommendationCard = (recommendation: Recommendation) => (
+    <View key={recommendation.id} style={styles.recommendationCard}>
+      <View style={styles.recommendationHeader}>
+        <Target color={COLORS.primary} size={20} />
+        <View style={styles.recommendationContent}>
+          <Text style={styles.recommendationTitle}>{recommendation.title}</Text>
+          <Text style={styles.recommendationDescription}>{recommendation.description}</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  const renderQuickActions = () => (
+    <View style={styles.quickActions}>
+      <TouchableOpacity
+        style={styles.quickActionButton}
+        onPress={() => {
+          // Call the prop function if provided, otherwise navigate
+          if (onSleepHelpPress) {
+            onSleepHelpPress();
+          } else {
+            router.push("/(tabs)/sleep" as Href);
+          }
+        }}
+      >
+        <Moon color={COLORS.primary} size={24} />
+        <Text style={styles.quickActionText}>Sleep Help</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // Render achievements
+  const renderAchievements = () => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Award color={COLORS.primary} size={20} />
+        <Text style={styles.sectionTitle}>Recent Achievements</Text>
+      </View>
+      
+      <View style={styles.achievementsList}>
+        <View style={styles.achievementBadge}>
+          <Award color={COLORS.warning} size={24} />
+          <Text style={styles.achievementText}>7-Day Streak</Text>
+        </View>
+        
+        <View style={styles.achievementBadge}>
+          <Moon color={COLORS.primary} size={24} />
+          <Text style={styles.achievementText}>Sleep Master</Text>
+        </View>
+        
+        <View style={styles.achievementBadge}>
+          <Brain color={COLORS.success} size={24} />
+          <Text style={styles.achievementText}>Mental Clarity</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Quick Actions */}
+        {renderQuickActions()}
+
+        {/* Activity Correlations */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <BarChart3 color={COLORS.primary} size={20} />
+            <Text style={styles.sectionTitle}>Activity Impact Analysis</Text>
+          </View>
+          <Text style={styles.sectionSubtitle}>
+            How different activities affect your mood, sleep, and mental clarity
+          </Text>
+          
+          <View style={styles.correlationsList}>
+            {correlations.map(renderCorrelationCard)}
+          </View>
+        </View>
+
+        {/* Daily Recommendations */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Target color={COLORS.primary} size={20} />
+            <Text style={styles.sectionTitle}>Smart Recommendations</Text>
+          </View>
+          <Text style={styles.sectionSubtitle}>
+            Personalized suggestions based on your patterns
+          </Text>
+          
+          <View style={styles.recommendationsList}>
+            {recommendations.map(renderRecommendationCard)}
+          </View>
+        </View>
+
+        {/* Achievement Badges */}
+        {renderAchievements()}
+      </ScrollView>
+
+      {/* Modals - Remove the SleepSupport modal since we now have a dedicated tab */}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    backgroundColor: COLORS.surface,
+    marginBottom: SPACING.lg,
+    borderRadius: BORDER_RADIUS.lg,
+    marginHorizontal: SPACING.lg,
+  },
+  quickActionButton: {
+    alignItems: 'center',
+    padding: SPACING.md,
+  },
+  quickActionText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.text,
+    marginTop: SPACING.xs,
+    fontWeight: '600',
+  },
+  section: {
+    marginBottom: SPACING.xl,
+    paddingHorizontal: SPACING.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  sectionTitle: {
+    ...TYPOGRAPHY.h4,
+    color: COLORS.text,
+    marginLeft: SPACING.sm,
+  },
+  sectionSubtitle: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.lg,
+  },
+  correlationsList: {
+    gap: SPACING.md,
+  },
+  correlationCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  correlationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  correlationTitle: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.text,
+    fontWeight: '600',
+    flex: 1,
+    marginLeft: SPACING.sm,
+  },
+  correlationFrequency: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  correlationImpacts: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  impactItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+  },
+  impactLabel: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textSecondary,
+  },
+  impactValue: {
+    ...TYPOGRAPHY.caption,
+    fontWeight: 'bold',
+  },
+  recommendationsList: {
+    gap: SPACING.md,
+  },
+  recommendationCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  recommendationHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  recommendationContent: {
+    flex: 1,
+    marginLeft: SPACING.sm,
+  },
+  recommendationTitle: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.text,
+    fontWeight: '600',
+    marginBottom: SPACING.xs,
+  },
+  recommendationDescription: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textSecondary,
+  },
+  achievementsList: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+  },
+  achievementBadge: {
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    flex: 0.3,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  achievementText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.text,
+    marginTop: SPACING.xs,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+});

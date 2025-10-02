@@ -1,0 +1,955 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, Modal } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
+import { MicroHabitRecommendation } from '@/types/mood';
+import { CheckCircle, Target, Flame, Sparkles, Heart, Activity, Bell, Play, ThumbsUp, ThumbsDown, Clock, Plus, Brain, ChevronDown, ChevronUp, Trash2 } from 'lucide-react-native';
+import AddHabitModal from '@/components/AddHabitModal';
+import { useHabits } from '@/hooks/use-habits';
+import TimePickerModal from '@/components/TimePickerModal';
+import Toast from '@/components/Toast';
+import { SPACING, BORDER_RADIUS, TYPOGRAPHY } from '@/constants/theme';
+interface MicroHabitTrackerProps {
+  recommendations?: MicroHabitRecommendation[];
+  onHabitToggle?: (habitId: string, completed: boolean) => void;
+  onHabitAdd?: (habit: ExtendedMicroHabitRecommendation) => void;
+}
+
+export interface ExtendedMicroHabitRecommendation extends MicroHabitRecommendation {
+  isActive?: boolean;
+  startDate?: string;
+  duration?: number;
+  reminderEnabled?: boolean;
+  reminderTime?: string;
+  lastFeedback?: 'good' | 'neutral' | 'bad';
+  totalCompleted?: number;
+}
+
+const generateMotivationalNudge = (habit: ExtendedMicroHabitRecommendation): string => {
+  if (habit.isCompletedToday) {
+    if (habit.streak >= 30) {
+      return "Incredible consistency! You're building a powerful habit!";
+    } else if (habit.streak >= 14) {
+      return "Great job! Two weeks of consistency is impressive!";
+    } else if (habit.streak >= 7) {
+      return "Weekly streak! You're building momentum!";
+    } else if (habit.streak >= 3) {
+      return "Three days in a row - you're on a roll!";
+    } else {
+      return "Great start! Keep up the good work!";
+    }
+  } else {
+    if (habit.streak >= 30) {
+      return "Don't break your month-long streak! You've got this!";
+    } else if (habit.streak >= 14) {
+      return "Protect your two-week streak! Just one more check!";
+    } else if (habit.streak >= 7) {
+      return "Keep your weekly streak going!";
+    } else if (habit.streak > 0) {
+      return "Continue your streak today!";
+    } else {
+      return "Start building a positive habit today!";
+    }
+  }
+};
+
+const sampleRecommendations: ExtendedMicroHabitRecommendation[] = [];
+
+export default function MicroHabitTracker({ 
+  recommendations = sampleRecommendations,
+  onHabitToggle,
+  onHabitAdd
+}: MicroHabitTrackerProps) {
+  const { theme } = useTheme();
+  const { 
+    habits: userHabits, 
+    completeHabit, 
+    undoHabitCompletion, 
+    updateHabit, 
+    isHabitCompletedToday,
+    addHabit,
+    deleteHabit
+  } = useHabits();
+  
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [addHabitModalVisible, setAddHabitModalVisible] = useState(false);
+  const [showAllHabits, setShowAllHabits] = useState(false);
+  const [deleteConfirmationVisible, setDeleteConfirmationVisible] = useState(false);
+  const [habitToDelete, setHabitToDelete] = useState<string | null>(null);
+  const [timePickerVisible, setTimePickerVisible] = useState(false);
+  const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string>('21:00');
+  const [newlyAddedHabit, setNewlyAddedHabit] = useState<any>(null); // Track newly added habits
+  
+  // Define categories inside the component to access theme
+  const CATEGORIES = [
+    { id: 'sleep', name: 'Sleep', icon: Target, color: theme.primary },
+    { id: 'mood', name: 'Mood', icon: Heart, color: theme.error },
+    { id: 'anxiety', name: 'Anxiety', icon: Activity, color: theme.warning },
+    { id: 'mentalClarity', name: 'Mental Clarity', icon: Brain, color: theme.success },
+    { id: 'intimacy', name: 'Intimacy', icon: Heart, color: '#FF69B4' },
+    { id: 'health', name: 'Health', icon: Activity, color: theme.accent },
+  ];
+  
+  useEffect(() => {
+    setRefreshKey(prev => prev + 1);
+  }, [userHabits]);
+  
+  const allHabits = [
+    ...recommendations, 
+    ...userHabits.map(habit => ({
+      id: habit.id,
+      title: habit.title,
+      description: habit.description,
+      category: habit.category,
+      streak: habit.streak,
+      isCompletedToday: isHabitCompletedToday(habit.id),
+      motivationNudge: generateMotivationalNudge({
+        ...habit, 
+        isCompletedToday: isHabitCompletedToday(habit.id),
+        streak: habit.streak,
+        isActive: habit.isActive,
+        startDate: habit.startDate,
+        duration: habit.duration,
+        reminderEnabled: habit.reminderEnabled,
+        reminderTime: habit.reminderTime,
+        totalCompleted: habit.totalCompleted,
+        lastCompleted: habit.lastCompleted
+      }),
+      isActive: habit.isActive,
+      startDate: habit.startDate,
+      duration: habit.duration,
+      reminderEnabled: habit.reminderEnabled,
+      reminderTime: habit.reminderTime,
+      totalCompleted: habit.totalCompleted,
+      lastCompleted: habit.lastCompleted,
+      lastFeedback: undefined
+    }))
+  ];
+  
+  // Show only 5 habits by default, or all if showAllHabits is true
+  const habitsToShow = showAllHabits ? allHabits : allHabits.slice(0, 5);
+  
+  // Show the "Show All Habits" button only if there are more than 5 habits
+  const showShowMoreButton = allHabits.length > 5;
+
+  const handleHabitToggle = (habitId: string) => {
+    const isCurrentlyCompleted = isHabitCompletedToday(habitId);
+    
+    if (isCurrentlyCompleted) {
+      undoHabitCompletion(habitId);
+    } else {
+      completeHabit(habitId);
+    }
+    
+    onHabitToggle?.(habitId, !isCurrentlyCompleted);
+  };
+
+  const handleStartHabit = (habitId: string) => {
+    updateHabit(habitId, { isActive: true, startDate: new Date().toISOString().split('T')[0] });
+  };
+
+  const handleReminderToggle = (habitId: string, enabled: boolean) => {
+    updateHabit(habitId, { reminderEnabled: enabled });
+  };
+
+  const showTimePicker = (habitId: string, currentTime?: string) => {
+    setSelectedHabitId(habitId);
+    setSelectedTime(currentTime || '21:00');
+    setTimePickerVisible(true);
+  };
+
+  const hideTimePicker = () => {
+    setTimePickerVisible(false);
+    setSelectedHabitId(null);
+  };
+
+  const handleTimeConfirm = (time: string) => {
+    if (selectedHabitId) {
+      updateHabit(selectedHabitId, { reminderTime: time });
+    }
+    hideTimePicker();
+  };
+
+  const handleFeedback = (habitId: string, feedback: 'good' | 'neutral' | 'bad') => {
+    completeHabit(habitId, feedback);
+    const feedbackText = feedback === 'good' ? '👍 Good' : feedback === 'neutral' ? '😐 Neutral' : '👎 Bad';
+    Alert.alert('Feedback Saved', `Thank you for your feedback: ${feedbackText}`);
+  };
+
+  const handleAddCustomHabit = () => {
+    setAddHabitModalVisible(true);
+  };
+
+  const handleCustomHabitConfirm = (habit: ExtendedMicroHabitRecommendation) => {
+    addHabit({
+      title: habit.title,
+      description: habit.description,
+      category: habit.category,
+      duration: habit.duration || 7,
+      reminderEnabled: habit.reminderEnabled || false,
+      reminderTime: habit.reminderTime,
+      startDate: new Date().toISOString().split('T')[0],
+      isActive: true
+    });
+    
+    onHabitAdd?.(habit);
+    setAddHabitModalVisible(false);
+  };
+
+  const handleDeleteHabit = (habitId: string) => {
+    setHabitToDelete(habitId);
+    setDeleteConfirmationVisible(true);
+  };
+
+  const confirmDeleteHabit = () => {
+    if (habitToDelete) {
+      deleteHabit(habitToDelete);
+      Alert.alert('Success', 'Habit deleted successfully.');
+    }
+    setDeleteConfirmationVisible(false);
+    setHabitToDelete(null);
+  };
+
+  const cancelDeleteHabit = () => {
+    setDeleteConfirmationVisible(false);
+    setHabitToDelete(null);
+  };
+
+
+  const getCategoryIcon = (category: string) => {
+    const suggestionCategory = CATEGORIES.find(cat => cat.id === category);
+    if (suggestionCategory) {
+      const IconComponent = suggestionCategory.icon;
+      return <IconComponent color={suggestionCategory.color} size={16} />;
+    }
+    
+    switch (category) {
+      case 'sleep':
+        return <Target color={theme.primary} size={16} />;
+      case 'mindfulness':
+        return <Sparkles color={theme.success} size={16} />;
+      case 'intimacy':
+        return <Heart color="#FF69B4" size={16} />;
+      case 'mood':
+        return <Heart color={theme.error} size={16} />;
+      case 'health':
+        return <Activity color={theme.warning} size={16} />;
+      case 'anxiety':
+        return <Activity color={theme.warning} size={16} />;
+      case 'mentalClarity':
+        return <Brain color={theme.success} size={16} />;
+      default:
+        return <CheckCircle color={theme.textSecondary} size={16} />;
+    }
+  };
+
+  const getCategoryColor = (category: string) => {
+    const suggestionCategory = CATEGORIES.find(cat => cat.id === category);
+    if (suggestionCategory) {
+      return suggestionCategory.color;
+    }
+    
+    switch (category) {
+      case 'sleep':
+        return theme.primary;
+      case 'mindfulness':
+        return theme.success;
+      case 'intimacy':
+        return '#FF69B4';
+      case 'mood':
+        return theme.error;
+      case 'health':
+        return theme.warning;
+      case 'anxiety':
+        return theme.warning;
+      case 'mentalClarity':
+        return theme.success;
+      default:
+        return theme.textSecondary;
+    }
+  };
+
+  const renderProgressVisualization = (habit: ExtendedMicroHabitRecommendation) => {
+    if (!habit.isActive || !habit.duration) return null;
+    
+    const totalDays = habit.duration;
+    const completedDays = habit.totalCompleted || 0;
+    const progressPercentage = Math.min(100, (completedDays / totalDays) * 100);
+    
+    return (
+      <View style={styles.progressContainer}>
+        <View style={styles.progressHeader}>
+          <Text style={styles.progressText}>Day {completedDays}/{totalDays}</Text>
+          <Text style={styles.progressPercentage}>{Math.round(progressPercentage)}%</Text>
+        </View>
+        <View style={styles.progressBarBackground}>
+          <View 
+            style={[
+              styles.progressBarFill, 
+              { 
+                width: `${progressPercentage}%`,
+                backgroundColor: progressPercentage === 100 ? theme.success : theme.primary
+              }
+            ]} 
+          />
+        </View>
+      </View>
+    );
+  };
+
+  const renderStartButton = (habit: ExtendedMicroHabitRecommendation) => {
+    if (habit.isActive) return null;
+    
+    return (
+      <TouchableOpacity 
+        style={styles.startButton}
+        onPress={() => handleStartHabit(habit.id)}
+      >
+        <Play color={theme.primary} size={16} />
+        <Text style={styles.startButtonText}>Start Habit</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderMarkDoneButton = (habit: ExtendedMicroHabitRecommendation) => {
+    if (!habit.isActive) return null;
+    
+    const isCompletedToday = isHabitCompletedToday(habit.id);
+    
+    return (
+      <TouchableOpacity 
+        style={[
+          styles.markDoneButton,
+          isCompletedToday && styles.markDoneButtonCompleted
+        ]}
+        onPress={() => handleHabitToggle(habit.id)}
+      >
+        <CheckCircle 
+          color={isCompletedToday ? theme.success : theme.textTertiary} 
+          size={20} 
+          fill={isCompletedToday ? theme.success : 'none'} 
+        />
+        <Text style={[
+          styles.markDoneButtonText,
+          isCompletedToday && styles.markDoneButtonTextCompleted
+        ]}>
+          {isCompletedToday ? 'Completed Today' : 'Mark as Done'}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderFeedbackPrompt = (habit: ExtendedMicroHabitRecommendation) => {
+    const isCompletedToday = isHabitCompletedToday(habit.id);
+    const hasFeedback = habit.lastFeedback;
+    
+    if (!isCompletedToday || hasFeedback) return null;
+    
+    return (
+      <View style={styles.feedbackContainer}>
+        <Text style={styles.feedbackTitle}>How did this habit feel?</Text>
+        <View style={styles.feedbackButtons}>
+          <TouchableOpacity 
+            style={styles.feedbackButton}
+            onPress={() => handleFeedback(habit.id, 'good')}
+          >
+            <ThumbsUp color={theme.success} size={16} />
+            <Text style={[styles.feedbackButtonText, { color: theme.success }]}>Good</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.feedbackButton}
+            onPress={() => handleFeedback(habit.id, 'neutral')}
+          >
+            <Text style={[styles.feedbackButtonText, { color: theme.textSecondary }]}>Neutral</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.feedbackButton}
+            onPress={() => handleFeedback(habit.id, 'bad')}
+          >
+            <ThumbsDown color={theme.error} size={16} />
+            <Text style={[styles.feedbackButtonText, { color: theme.error }]}>Bad</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  const renderReminderOption = (habit: ExtendedMicroHabitRecommendation) => {
+    if (!habit.isActive) return null;
+    
+    return (
+      <>
+        <View style={styles.reminderContainer}>
+          <Bell color={theme.textSecondary} size={16} />
+          <Text style={styles.reminderText}>Reminder</Text>
+          <Switch
+            value={habit.reminderEnabled || false}
+            onValueChange={(value) => handleReminderToggle(habit.id, value)}
+            trackColor={{ false: theme.backgroundSecondary, true: theme.primary }}
+          />
+          {habit.reminderEnabled && (
+            <TouchableOpacity 
+              style={styles.reminderTimeButton}
+              onPress={() => showTimePicker(habit.id, habit.reminderTime)}
+            >
+              <Clock color={theme.primary} size={16} />
+              <Text style={styles.reminderTimeText}>
+                {habit.reminderTime || 'Set Time'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <TimePickerModal
+          visible={timePickerVisible && selectedHabitId === habit.id}
+          onClose={hideTimePicker}
+          onConfirm={handleTimeConfirm}
+          selectedTime={selectedTime}
+        />
+      </>
+    );
+  };
+
+  return (
+    <View key={refreshKey} style={[styles.container, { backgroundColor: theme.surface }]}> 
+      <View style={styles.header}>
+        <Text style={[styles.title, { color: theme.text }]}>My Active Habits</Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Track your daily habits and build consistency</Text>
+      </View>
+      
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.habitsContainer}
+      >
+        {/* Active Habits */}
+        {habitsToShow.map((habit) => (
+          <View key={habit.id} style={[styles.habitCard, { backgroundColor: theme.background }]}> 
+            {/* Delete button for user-created habits */}
+            {!sampleRecommendations.some(rec => rec.id === habit.id) && (
+              <TouchableOpacity 
+                style={[styles.deleteButton, { backgroundColor: theme.error + '20' }]}
+                onPress={() => handleDeleteHabit(habit.id)}
+              >
+                <Trash2 color={theme.error} size={16} />
+              </TouchableOpacity>
+            )}
+            
+            <View style={styles.habitHeader}>
+              <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(habit.category) + '20' }]}>
+                {getCategoryIcon(habit.category)}
+                <Text style={[styles.categoryText, { color: getCategoryColor(habit.category) }]}>
+                  {habit.category.charAt(0).toUpperCase() + habit.category.slice(1)}
+                </Text>
+              </View>
+              
+              <View style={styles.habitActions}>
+                {renderStartButton(habit)}
+                {renderMarkDoneButton(habit)}
+              </View>
+            </View>
+            
+            <Text style={styles.habitTitle}>{habit.title}</Text>
+            <Text style={styles.habitDescription}>{habit.description}</Text>
+            
+            {renderProgressVisualization(habit)}
+            
+            <View style={styles.streakContainer}>
+              <Flame color={theme.warning} size={16} />
+              <Text style={[styles.streakText, { color: theme.warning }]}>{habit.streak} day streak</Text>
+            </View>
+            
+            {renderReminderOption(habit)}
+            {renderFeedbackPrompt(habit)}
+            
+            {habit.motivationNudge && (
+              <View style={styles.motivationContainer}>
+                <Text style={styles.motivationText}>✨ {habit.motivationNudge}</Text>
+              </View>
+            )}
+          </View>
+        ))}
+        
+        {/* Show more button when there are more than 5 habits */}
+        {showShowMoreButton && (
+          <TouchableOpacity 
+            style={styles.addHabitCard}
+            onPress={() => setShowAllHabits(!showAllHabits)}
+          >
+            <View style={styles.addHabitContent}>
+              {showAllHabits ? (
+                <>
+                  <ChevronUp color={theme.primary} size={24} />
+                  <Text style={[styles.addHabitText, { color: theme.primary }]}>Show Less</Text>
+                </>
+              ) : (
+                <>
+                  <ChevronDown color={theme.primary} size={24} />
+                  <Text style={[styles.addHabitText, { color: theme.primary }]}>Show All Habits ({allHabits.length - 5} more)</Text>
+                </>
+              )}
+            </View>
+          </TouchableOpacity>
+        )}
+        
+        {/* Add Custom Habit Card */}
+        <TouchableOpacity 
+          style={[styles.addHabitCard, { backgroundColor: theme.background, borderColor: theme.primary }]}
+          onPress={handleAddCustomHabit}
+        >
+          <View style={styles.addHabitContent}>
+            <Plus color={theme.primary} size={24} />
+            <Text style={[styles.addHabitText, { color: theme.primary }]}>Add Custom Habit</Text>
+            <View style={styles.descriptionContainer}>
+              <Text style={[styles.cardDescription, { color: theme.success }]}> 
+                Design a personal habit tailored to your lifestyle.
+              </Text>
+              <TouchableOpacity 
+                style={styles.infoIcon}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  Alert.alert(
+                    'Create Your Habit',
+                    'Customize your own habits and track progress with reminders.',
+                    [{ text: 'OK' }]
+                  );
+                }}
+              >
+                <Text style={[styles.infoIconText, { color: theme.textSecondary }]}>ℹ️</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </ScrollView>
+      
+      {/* Add Habit Modal */}
+      <AddHabitModal
+        visible={addHabitModalVisible}
+        onClose={() => setAddHabitModalVisible(false)}
+        onAdd={handleCustomHabitConfirm}
+      />
+      
+      {/* Delete Confirmation Modal */}
+      <Modal
+        transparent={true}
+        animationType="slide"
+        visible={deleteConfirmationVisible}
+        onRequestClose={cancelDeleteHabit}
+      >
+        <View style={styles.confirmationModalContainer}>
+          <View style={styles.confirmationModalContent}>
+            <Text style={styles.confirmationTitle}>Delete Habit?</Text>
+            <Text style={styles.confirmationMessage}>
+              Are you sure you want to remove this habit? This will delete its progress.
+            </Text>
+            <View style={styles.confirmationActions}>
+              <TouchableOpacity 
+                style={styles.confirmationCancelButton}
+                onPress={cancelDeleteHabit}
+              >
+                <Text style={styles.confirmationCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.confirmationDeleteButton}
+                onPress={confirmDeleteHabit}
+              >
+                <Text style={styles.confirmationDeleteText}>Delete</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      
+      {/* Toast Notification */}
+      <Toast 
+        message={toastMessage} 
+        visible={toastVisible} 
+        onClose={() => setToastVisible(false)} 
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    marginBottom: SPACING.lg,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    width: '100%',
+  },
+  header: {
+    marginBottom: SPACING.md,
+  },
+  title: {
+    ...TYPOGRAPHY.h4,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  subtitle: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textSecondary,
+  },
+  habitsContainer: {
+    flexDirection: 'row',
+    gap: SPACING.md,
+  },
+  habitCard: {
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    width: 280,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    position: 'relative', // For positioning delete button
+  },
+  addHabitCard: {
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.md,
+    width: 280,
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addHabitContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  addHabitText: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.xs,
+  },
+  descriptionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardDescription: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.success,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  infoIcon: {
+    marginLeft: SPACING.xs,
+    padding: SPACING.xs,
+  },
+  infoIconText: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+  },
+  habitHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    borderRadius: BORDER_RADIUS.sm,
+    gap: SPACING.xs,
+  },
+  categoryText: {
+    ...TYPOGRAPHY.caption,
+    fontWeight: '600',
+  },
+  habitActions: {
+    flexDirection: 'row',
+    gap: SPACING.xs,
+  },
+  startButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary + '20',
+    borderRadius: BORDER_RADIUS.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    gap: SPACING.xs,
+  },
+  startButtonText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  markDoneButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: BORDER_RADIUS.sm,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    gap: SPACING.xs,
+  },
+  markDoneButtonCompleted: {
+    backgroundColor: COLORS.success + '20',
+  },
+  markDoneButtonText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  markDoneButtonTextCompleted: {
+    color: COLORS.success,
+  },
+  habitTitle: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.text,
+    fontWeight: '600',
+    marginBottom: SPACING.xs,
+  },
+  habitDescription: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textSecondary,
+    marginBottom: SPACING.sm,
+  },
+  progressContainer: {
+    marginBottom: SPACING.sm,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.xs,
+  },
+  progressText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  progressPercentage: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textSecondary,
+  },
+  progressBarBackground: {
+    height: 6,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: COLORS.primary,
+  },
+  streakContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    marginBottom: SPACING.xs,
+  },
+  streakText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.warning,
+    fontWeight: '600',
+  },
+  reminderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    marginVertical: SPACING.xs,
+  },
+  reminderText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textSecondary,
+    flex: 1,
+  },
+  reminderTimeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
+    backgroundColor: COLORS.primary + '20',
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  reminderTimeText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  feedbackContainer: {
+    marginTop: SPACING.sm,
+    padding: SPACING.sm,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  feedbackTitle: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.text,
+    fontWeight: '600',
+    marginBottom: SPACING.xs,
+  },
+  feedbackButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  feedbackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.xs,
+    padding: SPACING.xs,
+  },
+  feedbackButtonText: {
+    ...TYPOGRAPHY.caption,
+    fontWeight: '600',
+  },
+  motivationContainer: {
+    backgroundColor: COLORS.primary + '10',
+    borderRadius: BORDER_RADIUS.sm,
+    padding: SPACING.sm,
+    marginTop: SPACING.sm,
+  },
+  motivationText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.primary,
+    fontStyle: 'italic',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  timePickerContainer: {
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.lg,
+    width: '80%',
+    alignItems: 'center',
+  },
+  timePickerTitle: {
+    ...TYPOGRAPHY.h4,
+    color: COLORS.text,
+    marginBottom: SPACING.lg,
+  },
+  timePickerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.lg,
+  },
+  picker: {
+    height: 150,
+    width: 80,
+  },
+  timeSeparator: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.text,
+    marginHorizontal: SPACING.md,
+  },
+  timePickerActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  timePickerButton: {
+    flex: 1,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: COLORS.backgroundSecondary,
+    marginRight: SPACING.sm,
+  },
+  cancelButtonText: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  confirmButton: {
+    backgroundColor: COLORS.primary,
+    marginLeft: SPACING.sm,
+  },
+  confirmButtonText: {
+    ...TYPOGRAPHY.body,
+    color: 'white',
+    fontWeight: '600',
+  },
+  deleteButton: {
+    position: 'absolute',
+    top: SPACING.xs,
+    right: SPACING.xs,
+    zIndex: 1,
+    padding: SPACING.xs,
+    backgroundColor: COLORS.error + '20',
+    borderRadius: BORDER_RADIUS.sm,
+  },
+  deleteButtonText: {
+    color: COLORS.error,
+    fontSize: 16,
+  },
+  confirmationModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  confirmationModalContent: {
+    backgroundColor: COLORS.background,
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.lg,
+    width: '80%',
+    alignItems: 'center',
+  },
+  confirmationTitle: {
+    ...TYPOGRAPHY.h4,
+    color: COLORS.text,
+    marginBottom: SPACING.md,
+  },
+  confirmationMessage: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: SPACING.lg,
+  },
+  confirmationActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  confirmationCancelButton: {
+    flex: 1,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+    backgroundColor: COLORS.backgroundSecondary,
+    marginRight: SPACING.sm,
+  },
+  confirmationDeleteButton: {
+    flex: 1,
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+    backgroundColor: COLORS.error,
+    marginLeft: SPACING.sm,
+  },
+  confirmationCancelText: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  confirmationDeleteText: {
+    ...TYPOGRAPHY.body,
+    color: 'white',
+    fontWeight: '600',
+  },
+});
