@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY } from '@/constants/theme';
 import { Target, Heart, Brain, Activity, Moon, Search, Plus, Flame, X } from 'lucide-react-native';
 import AddHabitModal from '@/components/AddHabitModal';
+import HabitDetailModal from '@/components/HabitDetailModal';
 import { useHabitRecommendations } from '@/hooks/use-habit-recommendations';
 import { useHabits } from '@/hooks/use-habits';
 
@@ -29,6 +30,8 @@ const HabitLibrarySection: React.FC<HabitLibrarySectionProps> = ({ onHabitAdded 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedHabit, setSelectedHabit] = useState<any>(null);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedHabitDetail, setSelectedHabitDetail] = useState<any>(null);
   const [tooltipVisible, setTooltipVisible] = useState<{ [key: string]: boolean }>({});
 
   // Get all habits from the library, personalized based on user data
@@ -64,6 +67,18 @@ const HabitLibrarySection: React.FC<HabitLibrarySectionProps> = ({ onHabitAdded 
     setModalVisible(true);
   };
 
+  // Handle showing habit details
+  const handleShowHabitDetails = (habit: any) => {
+    setSelectedHabitDetail(habit);
+    setDetailModalVisible(true);
+  };
+
+  // Handle starting a habit from details
+  const handleStartHabitFromDetails = (habit: any) => {
+    setSelectedHabit(habit);
+    setModalVisible(true);
+  };
+
   // Handle custom habit creation
   const handleCreateCustomHabit = () => {
     console.log('Create custom habit button pressed');
@@ -83,11 +98,12 @@ const HabitLibrarySection: React.FC<HabitLibrarySectionProps> = ({ onHabitAdded 
       title: habitData.title || selectedHabit?.title || 'Custom Habit',
       description: habitData.description || selectedHabit?.description || 'User created habit',
       category: habitData.category || selectedHabit?.category || 'sleep',
-      duration: habitData.duration || 7,
-      reminderEnabled: habitData.reminderEnabled || false,
-      reminderTime: habitData.reminderTime,
-      startDate: new Date().toISOString().split('T')[0],
-      isActive: true,
+      frequency: 'daily',
+      difficulty: 'medium',
+      evidenceBased: false,
+      notificationsEnabled: habitData.reminderEnabled || false,
+      notes: habitData.reminderTime ? `Reminder time: ${habitData.reminderTime}` : undefined,
+      createdAt: new Date().toISOString().split('T')[0],
     });
     
     // Close the modal and notify parent
@@ -134,9 +150,11 @@ const HabitLibrarySection: React.FC<HabitLibrarySectionProps> = ({ onHabitAdded 
                   </Text>
                 </View>
               </View>
-              <Text style={styles.suggestionTitle}>{suggestion.title}</Text>
-              <Text style={styles.suggestionDescription}>{suggestion.description}</Text>
-              <Text style={styles.suggestionReason}>✨ {suggestion.reason}</Text>
+              <TouchableOpacity onPress={() => handleShowHabitDetails(suggestion)}>
+                <Text style={styles.suggestionTitle}>{suggestion.title}</Text>
+                <Text style={styles.suggestionDescription}>{suggestion.description}</Text>
+                <Text style={styles.suggestionReason}>✨ {suggestion.reason}</Text>
+              </TouchableOpacity>
               
               <TouchableOpacity 
                 style={styles.addButton}
@@ -211,10 +229,11 @@ const HabitLibrarySection: React.FC<HabitLibrarySectionProps> = ({ onHabitAdded 
                 </Text>
               </View>
             </View>
-            
-            <Text style={styles.habitTitle}>{habit.title}</Text>
-            <Text style={styles.habitDescription}>{habit.description}</Text>
-            <Text style={styles.habitBenefits}>💡 {habit.benefits}</Text>
+            <TouchableOpacity onPress={() => handleShowHabitDetails(habit)}>
+              <Text style={styles.habitTitle}>{habit.title}</Text>
+              <Text style={styles.habitDescription}>{habit.description}</Text>
+              <Text style={styles.habitBenefits}>💡 {habit.benefits}</Text>
+            </TouchableOpacity>
             
             <TouchableOpacity 
               style={styles.addButton}
@@ -261,6 +280,14 @@ const HabitLibrarySection: React.FC<HabitLibrarySectionProps> = ({ onHabitAdded 
         onAdd={handleHabitConfirm}
         habit={selectedHabit}
       />
+      
+      {/* Habit Detail Modal */}
+      <HabitDetailModal
+        visible={detailModalVisible}
+        onClose={() => setDetailModalVisible(false)}
+        habit={selectedHabitDetail}
+        onStartHabit={handleStartHabitFromDetails}
+      />
     </View>
   );
 };
@@ -280,11 +307,11 @@ const styles = StyleSheet.create({
   title: {
     ...TYPOGRAPHY.h3,
     color: COLORS.text,
-  },
+  } as any,
   subtitle: {
     ...TYPOGRAPHY.caption,
     color: COLORS.textSecondary,
-  },
+  } as any,
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -300,7 +327,7 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     flex: 1,
     marginLeft: SPACING.sm,
-  },
+  } as any,
   section: {
     margin: SPACING.lg,
     marginTop: 0,
@@ -314,12 +341,12 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.h4,
     color: COLORS.text,
     marginLeft: SPACING.sm,
-  },
+  } as any,
   sectionSubtitle: {
     ...TYPOGRAPHY.caption,
     color: COLORS.textSecondary,
     marginBottom: SPACING.md,
-  },
+  } as any,
   suggestionsList: {
     gap: SPACING.md,
   },
@@ -344,13 +371,13 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption,
     color: COLORS.textSecondary,
     marginBottom: SPACING.sm,
-  },
+  } as any,
   suggestionReason: {
     ...TYPOGRAPHY.caption,
     color: COLORS.primary,
     fontStyle: 'italic',
     marginBottom: SPACING.md,
-  },
+  } as any,
   categoryFilter: {
     marginVertical: SPACING.md,
   },
@@ -418,13 +445,13 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.caption,
     color: COLORS.textSecondary,
     marginBottom: SPACING.sm,
-  },
+  } as any,
   habitBenefits: {
     ...TYPOGRAPHY.caption,
     color: COLORS.primary,
     fontStyle: 'italic',
     marginBottom: SPACING.md,
-  },
+  } as any,
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -494,7 +521,7 @@ const styles = StyleSheet.create({
   tooltipText: {
     ...TYPOGRAPHY.caption,
     color: COLORS.text,
-  },
+  } as any,
 });
 
 export default HabitLibrarySection;

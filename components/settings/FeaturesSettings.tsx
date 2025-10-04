@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, Switch } from 'react-native';
+import { View, Text, StyleSheet, Switch, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { getColors } from '@/constants/theme';
-import { SPACING } from '@/constants/theme';
+import { SPACING, TYPOGRAPHY } from '@/constants/theme';
 
 interface FeaturesSettingsProps {
   isDarkMode: boolean;
@@ -9,6 +10,11 @@ interface FeaturesSettingsProps {
 
 const FeaturesSettings: React.FC<FeaturesSettingsProps> = ({ isDarkMode }) => {
   const COLORS = getColors(isDarkMode);
+  const router = useRouter();
+  
+  const handleSupabaseTest = () => {
+    router.push('/supabase-test');
+  };
   
   return (
     <View style={styles.container}>
@@ -16,6 +22,14 @@ const FeaturesSettings: React.FC<FeaturesSettingsProps> = ({ isDarkMode }) => {
         Customize which features are enabled in the app
       </Text>
       {/* Add feature toggles here as needed */}
+      <TouchableOpacity 
+        style={[styles.button, { backgroundColor: COLORS.surfaceLight }]}
+        onPress={handleSupabaseTest}
+      >
+        <Text style={[styles.buttonText, { color: COLORS.primary }]}>
+          Supabase Integration Test
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -27,6 +41,16 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  button: {
+    padding: SPACING.md,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: SPACING.sm,
+  },
+  buttonText: {
+    ...TYPOGRAPHY.body,
+    fontWeight: '600' as const,
   },
 });
 

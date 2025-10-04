@@ -1370,6 +1370,16 @@ export default function AddEntryScreen() {
                   )}
                 </>
               )}
+              
+              {/* Improve Intimacy Button */}
+              <View style={{ marginTop: SPACING.md, paddingTop: SPACING.md, borderTopWidth: 1, borderTopColor: COLORS.border }}>
+                <TouchableOpacity
+                  style={styles.toggleButton}
+                  onPress={() => router.push('/intimacy/IntimacyWellnessHub')}
+                >
+                  <Text style={styles.toggleButtonText}>Improve My Intimacy</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         </View>

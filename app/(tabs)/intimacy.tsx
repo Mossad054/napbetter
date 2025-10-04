@@ -175,29 +175,26 @@ export default function CalendarScreen() {
     
     setSelectedDate(date);
     
-    // Check if there's an existing entry for this date
-    try {
-      const existingEntry = await getEntryForDate(date);
-      
-      if (existingEntry) {
-        // If entry exists, show details
-        setIsLoadingEntry(true);
-        const detailData = await getDailyDetailData(date);
-        
-        if (detailData) {
-          setDayData(detailData);
-          setShowDayDetail(true);
-        }
-        setIsLoadingEntry(false);
-      } else {
-        // If no entry exists, allow user to create one
-        setShowQuickLog(true);
-      }
-    } catch (error) {
-      console.error('Error checking for existing entry:', error);
-      // Even if there's an error, allow user to create a new entry
-      setShowQuickLog(true);
-    }
+    // Create mock data for the selected date
+    const mockData = {
+      date: date,
+      mood: { emoji: "😐", score: 3 },
+      impactSummary: "You had a balanced day with a mix of activities. Morning Walk helped maintain your mood, and 7 hours of sleep provided decent rest.",
+      activities: [
+        { emoji: "🚶", name: "Morning Walk", category: "Exercise", duration: "36m", impact: "+1.1" },
+        { emoji: "💻", name: "Deep Work Session", category: "Work", duration: "143m", impact: "-0.3" },
+        { emoji: "☕", name: "Coffee with Friend", category: "Social", duration: "71m", impact: "+1.3" },
+        { emoji: "🏋️", name: "Gym Workout", category: "Exercise", duration: "54m", impact: "+1.6" }
+      ],
+      sleep: { hours: 7, quality: "good", bedtime: "22:12", wake: "06:11" },
+      clarity: { score: 3, factors: ["Good sleep", "Morning walk"] },
+      habits: ["💧 Drink Water", "🏃 Exercise", "🧘 Meditate", "📝 Journal", "📖 Read"],
+      notes: "Had an interesting conversation about mindfulness today."
+    };
+    
+    // Set the mock data and show the modal
+    setDayData(mockData);
+    setShowDayDetail(true);
   };
 
   const handleCloseDayDetail = () => {

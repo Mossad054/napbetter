@@ -71,6 +71,10 @@ export default function SettingsScreen() {
     // router.push('/(tabs)/help'); // Uncomment when help screen is implemented
   };
 
+  const handleSupabaseTest = () => {
+    router.push('/supabase-test');
+  };
+
   const handleExportData = async () => {
     try {
       setIsExporting(true);
@@ -232,6 +236,14 @@ export default function SettingsScreen() {
           isDarkMode={isDarkMode}
         >
           <FeaturesSettings isDarkMode={isDarkMode} />
+          <TouchableOpacity 
+            style={[styles.button, { backgroundColor: COLORS.surfaceLight }]}
+            onPress={handleSupabaseTest}
+          >
+            <Text style={[styles.buttonText, { color: COLORS.primary }]}>
+              Supabase Integration Test
+            </Text>
+          </TouchableOpacity>
         </CollapsibleCard>
 
         {/* Preferences */}
@@ -309,5 +321,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16, 
     paddingBottom: 16, 
     gap: 12 
+  },
+  button: {
+    padding: SPACING.md,
+    borderRadius: BORDER_RADIUS.md,
+    alignItems: 'center',
+    marginTop: SPACING.sm,
+  },
+  buttonText: {
+    ...TYPOGRAPHY.body,
+    fontWeight: '600' as const,
   },
 });

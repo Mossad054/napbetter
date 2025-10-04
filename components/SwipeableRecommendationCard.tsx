@@ -6,6 +6,7 @@ import { Lightbulb, Plus, X } from 'lucide-react-native';
 import { COLORS, SPACING, BORDER_RADIUS, TYPOGRAPHY } from '@/constants/theme';
 import Toast from '@/components/Toast';
 import Confetti from '@/components/Confetti';
+import RecommendedPlanModal from '@/components/RecommendedPlanModal';
 
 interface DailyRecommendation {
   id: string;
@@ -47,9 +48,21 @@ const SwipeableRecommendationCard: React.FC<SwipeableRecommendationCardProps> = 
   const [showConfetti, setShowConfetti] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [showPlanModal, setShowPlanModal] = useState(false);
 
   const handleAddHabit = () => {
     onAddHabit(recommendation);
+    setShowConfetti(true);
+    setToastMessage('Added to Active Habits ✅');
+    setToastVisible(true);
+  };
+
+  const handleShowPlanDetails = () => {
+    setShowPlanModal(true);
+  };
+
+  const handleStartPlan = (plan: any) => {
+    onAddHabit(plan);
     setShowConfetti(true);
     setToastMessage('Added to Active Habits ✅');
     setToastVisible(true);
@@ -137,8 +150,10 @@ const SwipeableRecommendationCard: React.FC<SwipeableRecommendationCardProps> = 
             </TouchableOpacity>
           </View>
           
-          <Text style={styles.recommendationText}>{recommendation.suggestion}</Text>
-          <Text style={styles.recommendationReason}>{recommendation.reason}</Text>
+          <TouchableOpacity onPress={handleShowPlanDetails}>
+            <Text style={styles.recommendationText}>{recommendation.suggestion}</Text>
+            <Text style={styles.recommendationReason}>{recommendation.reason}</Text>
+          </TouchableOpacity>
           
           <TouchableOpacity 
             style={styles.addButton}
@@ -146,6 +161,13 @@ const SwipeableRecommendationCard: React.FC<SwipeableRecommendationCardProps> = 
           >
             <Text style={styles.addButtonText}>+ Add to My Habits</Text>
           </TouchableOpacity>
+          
+          <RecommendedPlanModal
+            visible={showPlanModal}
+            onClose={() => setShowPlanModal(false)}
+            recommendation={recommendation}
+            onStartPlan={handleStartPlan}
+          />
           
           {/* Confetti effect */}
           <Confetti visible={showConfetti} onComplete={handleConfettiComplete} />
@@ -200,14 +222,14 @@ const styles = StyleSheet.create({
   recommendationText: {
     ...TYPOGRAPHY.body,
     color: COLORS.text,
-    fontWeight: '600',
+    fontWeight: '600' as '600',
     marginBottom: SPACING.xs,
   },
   recommendationReason: {
     ...TYPOGRAPHY.caption,
     color: COLORS.textSecondary,
     marginBottom: SPACING.md,
-  },
+  } as any,
   addButton: {
     backgroundColor: COLORS.primary,
     borderRadius: BORDER_RADIUS.sm,
@@ -218,7 +240,7 @@ const styles = StyleSheet.create({
   addButtonText: {
     ...TYPOGRAPHY.caption,
     color: 'white',
-    fontWeight: '600',
+    fontWeight: '600' as '600',
   },
   rightActions: {
     position: 'absolute',
@@ -253,7 +275,7 @@ const styles = StyleSheet.create({
   actionText: {
     ...TYPOGRAPHY.caption,
     color: 'white',
-    fontWeight: '600',
+    fontWeight: '600' as '600',
     marginLeft: SPACING.xs,
   },
   instructionContainer: {
@@ -265,7 +287,7 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.small,
     color: COLORS.textSecondary,
     fontStyle: 'italic',
-  },
+  } as any,
 });
 
 export default SwipeableRecommendationCard;
