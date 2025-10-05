@@ -46,6 +46,7 @@ import {
   Gift,
   Zap,
   Flame,
+  BarChart3,
 } from "lucide-react-native";
 import { useTheme } from "@/contexts/ThemeContext";
 import { getColors } from "@/constants/theme";
@@ -830,6 +831,19 @@ function IntimacyWellnessHub() {
   const [feltConnected, setFeltConnected] = useState<boolean>(false);
   const [logNotes, setLogNotes] = useState<string>("");
 
+  // Act and Track state
+  const [activities, setActivities] = useState<any[]>([
+    { id: "a1", title: "Daily Check-in", completed: false, streak: 3, category: "Connection" },
+    { id: "a2", title: "Mindful Touch", completed: true, streak: 5, category: "Pleasure" },
+    { id: "a3", title: "Gratitude Share", completed: false, streak: 1, category: "Connection" },
+    { id: "a4", title: "Breathing Exercise", completed: true, streak: 7, category: "Stress Relief" },
+  ]);
+  
+  const [feedbackText, setFeedbackText] = useState("");
+  const [overallSatisfaction, setOverallSatisfaction] = useState<number | null>(null);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [completedActivities, setCompletedActivities] = useState(0);
+
   /* ----------------------------
      Assessment handlers
      ----------------------------*/
@@ -908,6 +922,20 @@ function IntimacyWellnessHub() {
     const next = MOCK_PLAYLISTS.find((p) => p.id !== selectedPlaylist.id) || MOCK_PLAYLISTS[0];
     Alert.alert("Recommendation", "We recommend: " + next.title);
     setSelectedPlaylist(next);
+  }
+
+  function toggleActivity(id: string) {
+    setActivities(prev => prev.map(activity => {
+      if (activity.id === id) {
+        const updatedActivity = { ...activity, completed: !activity.completed };
+        // Update streak if activity is completed
+        if (updatedActivity.completed) {
+          updatedActivity.streak = activity.streak + 1;
+        }
+        return updatedActivity;
+      }
+      return activity;
+    }));
   }
 
   /* ----------------------------
@@ -1282,6 +1310,16 @@ function IntimacyWellnessHub() {
               </View>
             ))}
           </View>
+          
+          {/* Navigation to Act & Track */}
+          <View style={{ marginTop: 24 }}>
+            <TouchableOpacity 
+              style={[styles.primaryBtn, { backgroundColor: COLORS.primary }]}
+              onPress={() => setCurrentPage(3)}
+            >
+              <Text style={{ color: COLORS.surface, fontWeight: "600" }}>Continue to Act & Track</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -1304,120 +1342,332 @@ function IntimacyWellnessHub() {
       />
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
         <View style={{ alignItems: "center", marginBottom: 20 }}>
-          <Sparkles size={48} color={COLORS.accent} />
-          <Text style={[styles.pageTitle, { color: COLORS.text, marginTop: 12 }]}>Log & Review</Text>
-          <Text style={[styles.pageSubtitle, { color: COLORS.textSecondary, marginTop: 4 }]}>Track your progress</Text>
+          <Target size={48} color={COLORS.primary} />
+          <Text style={[styles.pageTitle, { color: COLORS.text, marginTop: 12 }]}>Act & Track</Text>
+          <Text style={[styles.pageSubtitle, { color: COLORS.textSecondary, marginTop: 4 }]}>Track your activities and progress</Text>
+        </View>
+        
+        <View style={[styles.card, { backgroundColor: COLORS.surface, marginTop: 20 }]}>
+          <ProgressBar progress={66} />
+          
+          <Text style={[styles.smallText, { color: COLORS.textSecondary, marginBottom: 16, marginTop: 16 }]}>
+            Track your daily activities, view your progress, and provide feedback on your experience.
+          </Text>
+          
+          {/* Activities Tracking */}
+          <View style={{ marginTop: 16 }}>
+            <Text style={[styles.label, { color: COLORS.text }]}>Today's Activities</Text>
+            <Text style={[styles.smallText, { color: COLORS.textSecondary, marginTop: 4 }]}>
+              Track your daily intimacy activities
+            </Text>
+            
+            {activities.map((activity) => (
+              <View key={activity.id} style={[styles.card, { backgroundColor: COLORS.surfaceLight, padding: 12, marginTop: 8 }]}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: "600", color: COLORS.text }}>{activity.title}</Text>
+                    <View style={[styles.pill, { backgroundColor: COLORS.background, alignSelf: "flex-start", marginTop: 6 }]}>
+                      <Text style={{ color: COLORS.text, fontSize: 12 }}>{activity.category}</Text>
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    {activity.streak > 0 && (
+                      <View style={{ flexDirection: "row", alignItems: "center", marginRight: 12 }}>
+                        <Flame size={16} color={COLORS.primary} />
+                        <Text style={{ color: COLORS.text, marginLeft: 4, fontWeight: "600" }}>{activity.streak}</Text>
+                      </View>
+                    )}
+                    <TouchableOpacity 
+                      onPress={() => toggleActivity(activity.id)}
+                      style={[
+                        styles.checkbox, 
+                        { 
+                          backgroundColor: activity.completed ? COLORS.success : COLORS.background,
+                          minWidth: 80
+                        }
+                      ]}
+                    >
+                      <Text style={{ color: activity.completed ? COLORS.surface : COLORS.text, fontWeight: "600" }}>
+                        {activity.completed ? "Completed" : "Mark Done"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+          
+          {/* Progress Overview */}
+          <View style={{ marginTop: 16 }}>
+            <Text style={[styles.label, { color: COLORS.text }]}>Progress Overview</Text>
+            <Text style={[styles.smallText, { color: COLORS.textSecondary, marginTop: 4 }]}>
+              Your intimacy journey so far
+            </Text>
+            
+            <View style={[styles.card, { backgroundColor: COLORS.surfaceLight, padding: 16, marginTop: 8 }]}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <View>
+                  <Text style={{ fontWeight: "600", color: COLORS.text }}>Current Streak</Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", marginTop: 4 }}>
+                    <Flame size={20} color={COLORS.primary} />
+                    <Text style={{ color: COLORS.text, marginLeft: 8, fontSize: 18, fontWeight: "700" }}>
+                      {activities.filter(a => a.completed).length} days
+                    </Text>
+                  </View>
+                </View>
+                <View>
+                  <Text style={{ fontWeight: "600", color: COLORS.text }}>Activities Completed</Text>
+                  <Text style={{ color: COLORS.text, marginTop: 4, fontSize: 18, fontWeight: "700", textAlign: "right" }}>
+                    {activities.filter(a => a.completed).length}/{activities.length}
+                  </Text>
+                </View>
+              </View>
+              
+              <View style={{ marginTop: 16 }}>
+                <Text style={{ fontWeight: "600", color: COLORS.text }}>Completion Rate</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8 }}>
+                  <View style={{ flex: 1, height: 8, backgroundColor: COLORS.background, borderRadius: 4 }}>
+                    <View 
+                      style={{ 
+                        height: "100%", 
+                        width: `${(activities.filter(a => a.completed).length / activities.length) * 100}%`, 
+                        backgroundColor: COLORS.primary, 
+                        borderRadius: 4 
+                      }} 
+                    />
+                  </View>
+                  <Text style={{ color: COLORS.text, marginLeft: 8, fontWeight: "600" }}>
+                    {Math.round((activities.filter(a => a.completed).length / activities.length) * 100)}%
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+          
+          {/* Feedback Section */}
+          <View style={{ marginTop: 16 }}>
+            <Text style={[styles.label, { color: COLORS.text }]}>Share Your Feedback</Text>
+            <Text style={[styles.smallText, { color: COLORS.textSecondary, marginTop: 4 }]}>
+              Help us improve your experience
+            </Text>
+            
+            <View style={{ marginTop: 12 }}>
+              <Text style={[styles.smallText, { color: COLORS.text, fontWeight: "600" }]}>Overall Satisfaction</Text>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 8 }}>
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <TouchableOpacity
+                    key={value}
+                    style={styles.satDot}
+                    onPress={() => setOverallSatisfaction(value)}
+                  >
+                    <View
+                      style={[
+                        styles.emojiContainer,
+                        {
+                          backgroundColor: overallSatisfaction === value ? COLORS.primary : COLORS.background,
+                          transform: [
+                            {
+                              scale: overallSatisfaction === value ? 1.1 : 1,
+                            },
+                          ],
+                        },
+                      ]}
+                    >
+                      <Text style={styles.emoji}>{value}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            
+            <TextInput
+              value={feedbackText}
+              onChangeText={setFeedbackText}
+              placeholder="What's working well? What could be improved?"
+              style={[styles.textArea, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text, marginTop: 16 }]}
+              placeholderTextColor={COLORS.textSecondary}
+              multiline
+            />
+            
+            <TouchableOpacity 
+              style={[styles.primaryBtn, { backgroundColor: COLORS.primary, marginTop: 16 }]}
+              onPress={() => {
+                if (!feedbackText.trim() && overallSatisfaction === null) {
+                  Alert.alert("Feedback", "Please provide feedback or rating before submitting.");
+                  return;
+                }
+                // Save feedback (mock)
+                console.log("Feedback submitted:", { feedbackText, overallSatisfaction });
+                setShowSuccessMessage(true);
+                setTimeout(() => setShowSuccessMessage(false), 3000);
+                setFeedbackText("");
+                setOverallSatisfaction(null);
+              }}
+            >
+              <Text style={{ color: COLORS.surface, fontWeight: "600" }}>Submit Feedback</Text>
+            </TouchableOpacity>
+            
+            {showSuccessMessage && (
+              <View style={{ marginTop: 12, padding: 12, backgroundColor: `${COLORS.success}20`, borderRadius: 8, alignItems: "center" }}>
+                <Text style={{ color: COLORS.success, fontWeight: "600" }}>Feedback submitted successfully!</Text>
+              </View>
+            )}
+          </View>
+          
+          {/* Save All Data Button */}
+          <View style={{ marginTop: 24 }}>
+            <TouchableOpacity 
+              style={[styles.primaryBtn, { backgroundColor: COLORS.primary }]}
+              onPress={() => {
+                // Save all data (mock)
+                console.log("All data saved:", { 
+                  activities, 
+                  feedback: { feedbackText, overallSatisfaction },
+                  logs
+                });
+                Alert.alert(
+                  "Data Saved", 
+                  "All your progress and activities have been saved successfully!",
+                  [
+                    { text: "Continue", onPress: () => setCurrentPage(4) }
+                  ]
+                );
+              }}
+            >
+              <Text style={{ color: COLORS.surface, fontWeight: "600" }}>Save All Data & Continue</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+    </View>
+  );
+
+  const renderPage4 = () => (
+    <View style={{ flex: 1, backgroundColor: COLORS.backgroundSecondary }}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: "Intimate Wellness Hub",
+          headerStyle: { backgroundColor: COLORS.surface },
+          headerTitleStyle: { color: COLORS.text, fontWeight: "600" },
+          headerLeft: () => (
+            <TouchableOpacity style={{ padding: 8 }} onPress={() => setCurrentPage(3)}>
+              <X size={20} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+          ),
+        }}
+      />
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40 }}>
+        <View style={{ alignItems: "center", marginBottom: 20 }}>
+          <Trophy size={48} color={COLORS.primary} />
+          <Text style={[styles.pageTitle, { color: COLORS.text, marginTop: 12 }]}>Congratulations!</Text>
+          <Text style={[styles.pageSubtitle, { color: COLORS.textSecondary, marginTop: 4 }]}>You've completed the wellness journey</Text>
         </View>
         
         <View style={[styles.card, { backgroundColor: COLORS.surface, marginTop: 20 }]}>
           <ProgressBar progress={100} />
           
           <Text style={[styles.smallText, { color: COLORS.textSecondary, marginBottom: 16, marginTop: 16 }]}>
-            Let's track your progress and make adjustments to your plan.
+            You've successfully completed all phases of the Intimate Wellness Hub. Your data has been saved and you're ready to continue your journey.
           </Text>
           
-          {/* Quick Log */}
+          {/* Completion Summary */}
           <View style={{ marginTop: 16 }}>
-            <Text style={[styles.label, { color: COLORS.text }]}>Quick Log</Text>
-            <Text style={[styles.smallText, { color: COLORS.textSecondary, marginTop: 4 }]}>
-              Add a quick log of your recent intimate experience.
-            </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8 }}>
-              <Text style={{ fontSize: 24, marginRight: 10 }}>🌟</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontWeight: "600", color: COLORS.text }}>Satisfaction Level</Text>
-                <Text style={{ color: COLORS.textSecondary, marginTop: 4 }}>Rate your satisfaction with the experience (1-5)</Text>
-                <View style={{ flexDirection: "row", marginTop: 4 }}>
-                  {[1, 2, 3, 4, 5].map((value) => (
-                    <TouchableOpacity
-                      key={value}
-                      style={styles.emojiOption}
-                      onPress={() => setSatisfaction(value)}
-                      activeOpacity={0.7}
-                    >
-                      <View
-                        style={[
-                          styles.emojiContainer,
-                          {
-                            backgroundColor: satisfaction === value ? COLORS.primary : COLORS.background,
-                            transform: [
-                              {
-                                scale: satisfaction === value ? 1.1 : 1,
-                              },
-                            ],
-                          },
-                        ]}
-                      >
-                        <Text style={styles.emoji}>{value}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
+            <Text style={[styles.label, { color: COLORS.text }]}>Your Journey Summary</Text>
+            
+            <View style={[styles.card, { backgroundColor: COLORS.surfaceLight, padding: 16, marginTop: 12 }]}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 16 }}>
+                <View style={{ alignItems: "center" }}>
+                  <Text style={{ color: COLORS.text, fontSize: 24, fontWeight: "700" }}>
+                    {activities.filter(a => a.completed).length}
+                  </Text>
+                  <Text style={[styles.smallText, { color: COLORS.textSecondary, marginTop: 4 }]}>Activities</Text>
+                </View>
+                <View style={{ alignItems: "center" }}>
+                  <Text style={{ color: COLORS.text, fontSize: 24, fontWeight: "700" }}>
+                    {Math.round((activities.filter(a => a.completed).length / activities.length) * 100)}%
+                  </Text>
+                  <Text style={[styles.smallText, { color: COLORS.textSecondary, marginTop: 4 }]}>Completion</Text>
+                </View>
+                <View style={{ alignItems: "center" }}>
+                  <Text style={{ color: COLORS.text, fontSize: 24, fontWeight: "700" }}>
+                    {activities.filter(a => a.completed).length}
+                  </Text>
+                  <Text style={[styles.smallText, { color: COLORS.textSecondary, marginTop: 4 }]}>Day Streak</Text>
+                </View>
+              </View>
+              
+              <View style={{ marginTop: 16 }}>
+                <Text style={[styles.label, { color: COLORS.text, fontSize: 18 }]}>Next Steps</Text>
+                <Text style={[styles.smallText, { color: COLORS.textSecondary, marginTop: 8 }]}>
+                  Continue practicing the activities you've learned to maintain and build on your progress.
+                </Text>
+              </View>
+              
+              <View style={{ marginTop: 16 }}>
+                <Text style={[styles.label, { color: COLORS.text, fontSize: 18 }]}>Resources</Text>
+                <View style={{ marginTop: 8 }}>
+                  <TouchableOpacity 
+                    style={[styles.card, { backgroundColor: COLORS.background, padding: 12, flexDirection: "row", alignItems: "center" }]}
+                    onPress={() => Alert.alert("Resource", "Your personalized plan recommendations will appear here.")}
+                  >
+                    <Gift size={20} color={COLORS.primary} />
+                    <Text style={{ color: COLORS.text, marginLeft: 12, flex: 1 }}>Personalized Plan Recommendations</Text>
+                    <ChevronRight size={20} color={COLORS.textSecondary} />
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.card, { backgroundColor: COLORS.background, padding: 12, flexDirection: "row", alignItems: "center", marginTop: 8 }]}
+                    onPress={() => Alert.alert("Resource", "Your progress tracking tools will appear here.")}
+                  >
+                    <BarChart3 size={20} color={COLORS.accent} />
+                    <Text style={{ color: COLORS.text, marginLeft: 12, flex: 1 }}>Progress Tracking Tools</Text>
+                    <ChevronRight size={20} color={COLORS.textSecondary} />
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.card, { backgroundColor: COLORS.background, padding: 12, flexDirection: "row", alignItems: "center", marginTop: 8 }]}
+                    onPress={() => Alert.alert("Resource", "Community support resources will appear here.")}
+                  >
+                    <Users size={20} color={COLORS.success} />
+                    <Text style={{ color: COLORS.text, marginLeft: 12, flex: 1 }}>Community Support</Text>
+                    <ChevronRight size={20} color={COLORS.textSecondary} />
+                  </TouchableOpacity>
                 </View>
               </View>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", marginTop: 8 }}>
-              <Text style={{ fontSize: 24, marginRight: 10 }}>🤝</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontWeight: "600", color: COLORS.text }}>Connection</Text>
-                <Text style={{ color: COLORS.textSecondary, marginTop: 4 }}>Did you feel connected?</Text>
-                <Switch value={feltConnected} onValueChange={setFeltConnected} trackColor={{ false: COLORS.border, true: COLORS.primary }} thumbColor={feltConnected ? COLORS.surface : COLORS.textSecondary} />
-              </View>
-            </View>
-            <TextInput
-              value={logNotes}
-              onChangeText={setLogNotes}
-              placeholder="Additional notes..."
-              style={[styles.textArea, { backgroundColor: COLORS.surface, borderColor: COLORS.border, color: COLORS.text, marginTop: 8 }]}
-              placeholderTextColor={COLORS.textSecondary}
-              multiline
-            />
-            <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: COLORS.primary, marginTop: 8 }]} onPress={addQuickLog}>
-              <Text style={{ color: COLORS.surface, fontWeight: "600" }}>Add to Logs</Text>
+          </View>
+          
+          {/* Action Buttons */}
+          <View style={{ marginTop: 24, flexDirection: "row", justifyContent: "space-between" }}>
+            <TouchableOpacity 
+              style={[styles.secondaryBtn, { backgroundColor: COLORS.surface, borderColor: COLORS.border, flex: 1, marginRight: 8 }]}
+              onPress={() => setCurrentPage(3)}
+            >
+              <Text style={{ color: COLORS.text, fontWeight: "600" }}>Review Progress</Text>
             </TouchableOpacity>
-          </View>
-          
-          {/* Progress Review */}
-          <View style={{ marginTop: 16 }}>
-            <Text style={[styles.label, { color: COLORS.text }]}>Progress Review</Text>
-            <Text style={[styles.smallText, { color: COLORS.textSecondary, marginTop: 4 }]}>
-              Here's a quick look at your progress so far.
-            </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
-              <Text style={{ color: COLORS.text, fontWeight: "600" }}>Week</Text>
-              <Text style={{ color: COLORS.text, fontWeight: "600" }}>Intimacy</Text>
-              <Text style={{ color: COLORS.text, fontWeight: "600" }}>Mood</Text>
-            </View>
-            <FlatList
-              data={progress.weeks}
-              keyExtractor={(item) => item}
-              renderItem={({ item, index }) => (
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
-                  <Text style={{ color: COLORS.text }}>{item}</Text>
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <View style={{ width: 32, height: 12, backgroundColor: COLORS.primary, borderRadius: 4, marginRight: 4 }}>
-                      <View style={{ width: `${progress.intimacyScores[index] * 20}%`, height: 12, backgroundColor: COLORS.success, borderRadius: 4 }} />
-                    </View>
-                    <Text style={{ color: COLORS.text }}>{progress.intimacyScores[index]}</Text>
-                  </View>
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
-                    <View style={{ width: 32, height: 12, backgroundColor: COLORS.primary, borderRadius: 4, marginRight: 4 }}>
-                      <View style={{ width: `${progress.moodScores[index] * 20}%`, height: 12, backgroundColor: COLORS.success, borderRadius: 4 }} />
-                    </View>
-                    <Text style={{ color: COLORS.text }}>{progress.moodScores[index]}</Text>
-                  </View>
-                </View>
-              )}
-            />
-          </View>
-          
-          {/* Adjust Plan */}
-          <View style={{ marginTop: 16 }}>
-            <Text style={[styles.label, { color: COLORS.text }]}>Adjust Plan</Text>
-            <Text style={[styles.smallText, { color: COLORS.textSecondary, marginTop: 4 }]}>
-              Consider making changes to your plan based on your progress.
-            </Text>
-            <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: COLORS.primary, marginTop: 16 }]} onPress={recommendNextPlaylist}>
-              <Text style={{ color: COLORS.surface, fontWeight: "600" }}>Recommend Next Plan</Text>
+            
+            <TouchableOpacity 
+              style={[styles.primaryBtn, { backgroundColor: COLORS.primary, flex: 1, marginLeft: 8 }]}
+              onPress={() => {
+                Alert.alert(
+                  "Wellness Journey Complete",
+                  "You've successfully completed the Intimate Wellness Hub! Your progress has been saved. Continue practicing the techniques you've learned to maintain and build on your progress.",
+                  [
+                    { 
+                      text: "Finish", 
+                      onPress: () => {
+                        // Reset to first page for potential future use
+                        setCurrentPage(1);
+                        // In a real app, you might navigate back to the main screen
+                        router.back();
+                      } 
+                    }
+                  ]
+                );
+              }}
+            >
+              <Text style={{ color: COLORS.surface, fontWeight: "600" }}>Finish Journey</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1433,6 +1683,7 @@ function IntimacyWellnessHub() {
       {currentPage === 1 && renderPage1()}
       {currentPage === 2 && renderPage2()}
       {currentPage === 3 && renderPage3()}
+      {currentPage === 4 && renderPage4()}
       <PlaylistModal 
         visible={showPlaylistModal} 
         onClose={() => setShowPlaylistModal(false)} 
@@ -1465,17 +1716,24 @@ function IntimacyWellnessHub() {
 const styles = StyleSheet.create({
   label: {
     fontSize: 24,
-    fontWeight: "700",
+    fontWeight: "bold",
     marginBottom: 8,
   },
   smallText: {
     fontSize: 16,
     color: "#757575",
+    fontWeight: "normal",
   },
   primaryBtn: {
     padding: 12,
     borderRadius: 8,
     alignItems: "center",
+  },
+  secondaryBtn: {
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    borderWidth: 1,
   },
   smallBtn: {
     padding: 8,
@@ -1490,11 +1748,6 @@ const styles = StyleSheet.create({
     borderRadius: BORDER_RADIUS.lg,
     padding: 16,
     marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
   },
   row: {
     flexDirection: "row",
@@ -1505,7 +1758,7 @@ const styles = StyleSheet.create({
   tinyText: { 
     fontSize: 11, 
     color: "#9CA3AF",
-    ...TYPOGRAPHY.small
+    fontWeight: "normal",
   },
   rangeRow: { 
     flexDirection: "row", 
@@ -1536,7 +1789,8 @@ const styles = StyleSheet.create({
     borderColor: "#E0E0E0"
   },
   goalText: { 
-    ...TYPOGRAPHY.caption
+    fontSize: 14,
+    fontWeight: "normal",
   },
   playlistBox: { 
     marginTop: 8, 
@@ -1578,7 +1832,8 @@ const styles = StyleSheet.create({
     borderRadius: 8, 
     padding: 10, 
     marginTop: 8,
-    ...TYPOGRAPHY.body
+    fontSize: 16,
+    fontWeight: "400",
   },
   progressBarContainer: {
     height: 6,
@@ -1594,10 +1849,12 @@ const styles = StyleSheet.create({
     height: "100%"
   },
   pageTitle: {
-    ...TYPOGRAPHY.h2
+    fontSize: 24,
+    fontWeight: "bold",
   },
   pageSubtitle: {
-    ...TYPOGRAPHY.body
+    fontSize: 16,
+    fontWeight: "normal",
   },
   successContainer: {
     padding: 20,
@@ -1609,11 +1866,13 @@ const styles = StyleSheet.create({
     marginBottom: 16
   },
   successTitle: {
-    ...TYPOGRAPHY.h3
+    fontSize: 20,
+    fontWeight: "bold",
   },
   successMessage: {
     textAlign: "center",
-    ...TYPOGRAPHY.body
+    fontSize: 16,
+    fontWeight: "normal",
   },
   satDot: { 
     width: 44, 
@@ -1647,7 +1906,7 @@ const styles = StyleSheet.create({
   emojiLabel: {
     fontSize: 12,
     textAlign: "center",
-    ...TYPOGRAPHY.small,
+    fontWeight: "normal",
   },
 
 });
